@@ -141,6 +141,32 @@
   .speler-chip.team-a .badge{background:var(--groen);}
   .speler-chip.team-b .badge{background:var(--geel-dark);}
   .voorstel-note{font-size:11px;color:var(--muted);margin-top:8px;text-align:center;}
+
+  .volgende-banner{
+    background:linear-gradient(135deg,var(--groen) 0%,var(--groen-dark) 100%);color:#fff;
+    border-radius:12px;padding:16px 18px;margin-bottom:16px;box-shadow:0 3px 10px rgba(0,0,0,0.15);
+  }
+  .volgende-banner .lbl{font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:0.85;margin-bottom:4px;}
+  .volgende-banner .datum{font-size:18px;font-weight:bold;margin-bottom:8px;}
+  .volgende-banner .team-row{color:#fff;}
+  .volgende-banner .vs{color:#e8f0e8;}
+  .volgende-banner .rust-lbl{color:#cfe0cf;border-top-color:rgba(255,255,255,0.25);}
+
+  .stat-card{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line);}
+  .stat-card:last-child{border-bottom:none;}
+  .stat-card .icon{font-size:22px;}
+  .stat-card .txt{font-size:13px;}
+  .stat-card .txt b{color:var(--groen-dark);}
+
+  .deel-prompt .modal-box{max-width:340px;}
+  .deel-tekst{
+    background:#f6f6f6;border-radius:8px;padding:12px;font-size:13px;white-space:pre-line;
+    text-align:left;margin-bottom:16px;color:var(--ink);
+  }
+  .whatsapp-btn{
+    display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;
+    padding:11px 20px;border-radius:24px;font-size:14px;text-decoration:none;font-family:inherit;
+  }
 </style>
 </head>
 <body>
@@ -160,6 +186,10 @@
 
   <!-- KALENDER -->
   <div id="tab-kalender">
+    <div id="volgendeWedstrijdBanner"></div>
+    <div class="btn-row" style="justify-content:center;margin-bottom:16px">
+      <button class="btn" id="btnHeleSeizoenAgenda">📅 Volledig seizoen toevoegen aan agenda</button>
+    </div>
     <div class="card">
       <h2>Volledig seizoen</h2>
       <div id="kalenderLijst"></div>
@@ -200,6 +230,10 @@
       <h2>🏆 Beste ploeg</h2>
       <p style="font-size:12px;color:var(--muted);margin-top:-6px">Combinaties die minstens 1x samen speelden.</p>
       <div id="klassementPloegen"><div class="empty-msg">Nog geen wedstrijden gespeeld.</div></div>
+    </div>
+    <div class="card">
+      <h2>✨ Weetjes van dit seizoen</h2>
+      <div id="seizoenWeetjes"><div class="empty-msg">Nog geen wedstrijden gespeeld.</div></div>
     </div>
   </div>
 
@@ -288,6 +322,19 @@ function showConfirm(message, onYes){
   document.getElementById('mCancel').addEventListener('click', () => c.innerHTML = '');
   document.getElementById('mOk').addEventListener('click', () => { c.innerHTML = ''; onYes(); });
 }
+function showDeelPrompt(tekst){
+  const c = document.getElementById('modalContainer');
+  const waLink = 'https://wa.me/?text=' + encodeURIComponent(tekst);
+  c.innerHTML = `<div class="modal-overlay deel-prompt"><div class="modal-box">
+    <p style="font-weight:bold;margin-bottom:12px">Score opgeslagen! 🎾</p>
+    <div class="deel-tekst">${tekst.replace(/\n/g,'<br>')}</div>
+    <div class="btn-row" style="justify-content:center;flex-wrap:wrap">
+      <a href="${waLink}" target="_blank" class="whatsapp-btn">📤 Deel via WhatsApp</a>
+      <button class="btn secondary" id="deelSluiten">Sluiten</button>
+    </div>
+  </div></div>`;
+  document.getElementById('deelSluiten').addEventListener('click', () => c.innerHTML = '');
+}
 function showToast(msg){
   const c = document.getElementById('toastContainer');
   c.innerHTML = `<div class="toast">${msg}</div>`;
@@ -336,6 +383,7 @@ function matchVoorDatum(datum){
   return matches.find(m => m.datum === datum);
 }
 function renderKalender(){
+  renderVolgendeWedstrijdBanner();
   const container = document.getElementById('kalenderLijst');
   container.innerHTML = '';
   ROTATIE.forEach(wk => {
@@ -364,6 +412,25 @@ function renderKalender(){
     `;
     container.appendChild(div);
   });
+}
+
+function renderVolgendeWedstrijdBanner(){
+  const banner = document.getElementById('volgendeWedstrijdBanner');
+  const volgende = ROTATIE.find(wk => !matchVoorDatum(wk.datum));
+  if(!volgende){
+    banner.innerHTML = '';
+    return;
+  }
+  banner.innerHTML = `
+    <div class="volgende-banner">
+      <div class="lbl">🎾 Volgende wedstrijd</div>
+      <div class="datum">${maandLabelKort(volgende.datum)}, 18u30</div>
+      <div class="team-row"><div class="avatars">${avatarHTML(volgende.team1[0],26)}${avatarHTML(volgende.team1[1],26)}</div><span class="namen">${volgende.team1.join(' & ')}</span></div>
+      <div class="vs">vs</div>
+      <div class="team-row"><div class="avatars">${avatarHTML(volgende.team2[0],26)}${avatarHTML(volgende.team2[1],26)}</div><span class="namen">${volgende.team2.join(' & ')}</span></div>
+      <div class="rust-lbl">Rust: ${volgende.rust.join(' & ')}</div>
+    </div>
+  `;
 }
 
 /* ============ SCORE INGEVEN ============ */
@@ -476,6 +543,13 @@ function renderSpelerSlots(){
   });
 }
 function vervangSpeler(idx, oudeNaam, nieuweNaam){
+  const isRegulierEnAlIngezet = SPELERS.includes(nieuweNaam) &&
+    huidigeSpelersVanavond.some((n, i) => i !== idx && n === nieuweNaam);
+  if(isRegulierEnAlIngezet){
+    showToast(nieuweNaam + ' staat al bij een ander vakje ingevuld — kies een andere speler.');
+    renderSpelerSlots(); // zet dropdown terug naar de vorige, geldige keuze
+    return;
+  }
   huidigeSpelersVanavond[idx] = nieuweNaam;
   const teamAIdx = huidigeTeamA.indexOf(oudeNaam);
   if(teamAIdx !== -1) huidigeTeamA[teamAIdx] = nieuweNaam;
@@ -581,7 +655,10 @@ document.getElementById('btnScoreOpslaan').addEventListener('click', async () =>
     await setDoc(doc(db, 'tennisMatches', wk.datum), {
       datum: wk.datum, team1, team2, sets, winnaar
     });
-    showToast(winnaar === 0 ? 'Score opgeslagen (gelijkspel).' : 'Score opgeslagen.');
+    const setsTekst = sets.map(s => s.a + '-' + s.b).join(', ');
+    const winnaarTekst = winnaar === 0 ? 'gelijkspel' : (winnaar===1 ? team1.join(' & ') : team2.join(' & ')) + ' wint!';
+    const deelTekst = `🎾 Tennis Heiveld — ${maandLabelKort(wk.datum)}\n${team1.join(' & ')} vs ${team2.join(' & ')}\nUitslag: ${setsTekst}\n${winnaarTekst}`;
+    showDeelPrompt(deelTekst);
   }catch(e){
     console.error(e);
     showToast('Kon niet opslaan — controleer je internetverbinding.');
@@ -656,6 +733,78 @@ function renderKlassement(){
       container2.appendChild(div);
     });
   }
+
+  renderSeizoenWeetjes();
+  detecteerLeiderswissel(spelerLijst[0] ? spelerLijst[0].naam : null);
+}
+
+/* ============ WEETJES VAN HET SEIZOEN ============ */
+function renderSeizoenWeetjes(){
+  const container = document.getElementById('seizoenWeetjes');
+  const beslisteMatches = matches.filter(m => m.winnaar !== 0);
+  if(beslisteMatches.length === 0){
+    container.innerHTML = '<div class="empty-msg">Nog geen wedstrijden gespeeld.</div>';
+    return;
+  }
+
+  // Grootste overwinning (grootste verschil in games)
+  let grootste = null;
+  beslisteMatches.forEach(m => {
+    const t1 = m.sets.reduce((s,x)=>s+x.a,0), t2 = m.sets.reduce((s,x)=>s+x.b,0);
+    const verschil = Math.abs(t1-t2);
+    if(!grootste || verschil > grootste.verschil) grootste = {verschil, m, winTeam: m.winnaar===1?m.team1:m.team2};
+  });
+
+  // Eerste overwinning van het seizoen (chronologisch eerste beslissende match)
+  const eersteMatch = beslisteMatches[0]; // matches array is al gesorteerd op datum asc
+  const eersteWinTeam = eersteMatch.winnaar === 1 ? eersteMatch.team1 : eersteMatch.team2;
+
+  // Langste winreeks per speler
+  const reeksen = {}, huidig = {};
+  matches.forEach(m => {
+    const winTeam = m.winnaar === 1 ? m.team1 : (m.winnaar === 2 ? m.team2 : null);
+    [...m.team1, ...m.team2].forEach(naam => {
+      if(winTeam && winTeam.includes(naam)){
+        huidig[naam] = (huidig[naam]||0) + 1;
+        reeksen[naam] = Math.max(reeksen[naam]||0, huidig[naam]);
+      } else {
+        huidig[naam] = 0;
+      }
+    });
+  });
+  let langsteReeks = null;
+  Object.keys(reeksen).forEach(naam => {
+    if(reeksen[naam] >= 2 && (!langsteReeks || reeksen[naam] > langsteReeks.aantal)){
+      langsteReeks = {naam, aantal: reeksen[naam]};
+    }
+  });
+
+  const items = [];
+  if(grootste){
+    items.push({icon:'💪', txt:`Grootste overwinning: <b>${grootste.winTeam.join(' & ')}</b> met een verschil van <b>${grootste.verschil} games</b> (${maandLabelKort(grootste.m.datum)})`});
+  }
+  items.push({icon:'🥇', txt:`Eerste overwinning van het seizoen: <b>${eersteWinTeam.join(' & ')}</b> (${maandLabelKort(eersteMatch.datum)})`});
+  if(langsteReeks){
+    items.push({icon:'🔥', txt:`Langste winreeks: <b>${langsteReeks.naam}</b> met <b>${langsteReeks.aantal} overwinningen op rij</b>`});
+  }
+  items.push({icon:'📊', txt:`In totaal <b>${beslisteMatches.length}</b> beslissende wedstrijden gespeeld dit seizoen`});
+
+  container.innerHTML = '';
+  items.forEach(it => {
+    const div = document.createElement('div');
+    div.className = 'stat-card';
+    div.innerHTML = `<span class="icon">${it.icon}</span><span class="txt">${it.txt}</span>`;
+    container.appendChild(div);
+  });
+}
+
+/* ============ AUTOMATISCH FELICITATIEBERICHT BIJ LEIDERSWISSEL ============ */
+let vorigeLeider = undefined; // undefined = nog niet geïnitialiseerd (geen toast bij allereerste load)
+function detecteerLeiderswissel(nieuweLeider){
+  if(vorigeLeider !== undefined && nieuweLeider && nieuweLeider !== vorigeLeider){
+    showToast('🎉 Nieuwe leider in het klassement: ' + nieuweLeider + '!');
+  }
+  vorigeLeider = nieuweLeider;
 }
 
 /* ============ SPELERS / FOTO'S ============ */
@@ -701,12 +850,44 @@ document.getElementById('fotoInput').addEventListener('change', (e) => {
   reader.readAsDataURL(file);
 });
 
+/* ============ AGENDA-EXPORT (heel seizoen) ============ */
+function icsEscape(str){ return str.replace(/,/g,'\\,').replace(/;/g,'\\;'); }
+function bouwSeizoenICS(){
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Tennis Heiveld//NL','CALSCALE:GREGORIAN'];
+  ROTATIE.forEach(wk => {
+    const ymd = wk.datum.replace(/-/g,'');
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:' + ymd + '-tennisheiveld@heiveld');
+    lines.push('DTSTART;TZID=Europe/Brussels:' + ymd + 'T183000');
+    lines.push('DTEND;TZID=Europe/Brussels:' + ymd + 'T200000');
+    lines.push('SUMMARY:' + icsEscape('Tennis Heiveld'));
+    lines.push('LOCATION:' + icsEscape('Heiveld'));
+    lines.push('DESCRIPTION:' + icsEscape('Rust volgens schema: ' + wk.rust.join(' & ') + '. Ploegindeling wordt \'s avonds zelf bepaald.'));
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+function downloadICS(bestandsnaam, inhoud){
+  const blob = new Blob([inhoud], {type:'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = bestandsnaam;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+document.getElementById('btnHeleSeizoenAgenda').addEventListener('click', () => {
+  downloadICS('tennis-heiveld-seizoen.ics', bouwSeizoenICS());
+  showToast('Agendabestand gedownload — open het om alle 35 data toe te voegen.');
+});
+
 /* ============ TABS ============ */
 function setActiveTab(tab){
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   ['kalender','score','klassement','spelers'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab);
   });
+  if(tab === 'score' && datumDropdownGeinitialiseerd) toonMatchInfo(); // altijd terug naar een geldige teamverdeling
 }
 document.querySelectorAll('.tab-btn').forEach(b => {
   b.addEventListener('click', () => setActiveTab(b.dataset.tab));
