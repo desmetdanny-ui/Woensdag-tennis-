@@ -125,6 +125,22 @@
   .speler-rij{display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--line);}
   .speler-rij:last-child{border-bottom:none;}
   .speler-rij .naam{flex:1;font-weight:bold;font-size:14px;}
+
+  .team-kies-wrap{margin-top:8px;}
+  .team-kies-lbl{font-size:12px;color:var(--muted);margin:10px 0 6px;}
+  .chip-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .speler-chip{
+    display:flex;align-items:center;gap:8px;background:#fbf8f0;border:2px solid var(--line);
+    border-radius:10px;padding:8px 10px;cursor:pointer;font-size:13px;
+  }
+  .speler-chip.team-a{border-color:var(--groen);background:#eef5ee;}
+  .speler-chip.team-b{border-color:var(--geel-dark);background:#fbf7e0;}
+  .speler-chip .badge{
+    font-size:10px;font-weight:bold;padding:2px 6px;border-radius:10px;color:#fff;margin-left:auto;
+  }
+  .speler-chip.team-a .badge{background:var(--groen);}
+  .speler-chip.team-b .badge{background:var(--geel-dark);}
+  .voorstel-note{font-size:11px;color:var(--muted);margin-top:8px;text-align:center;}
 </style>
 </head>
 <body>
@@ -161,7 +177,8 @@
     <div class="card">
       <h2>Uitslag (per set)</h2>
       <p style="font-size:12px;color:var(--muted);margin-top:-6px">
-        Geldige tennisscores: 6-0 t/m 6-4, 7-5, of 7-6 (tiebreak). Vul 1 tot 3 sets in.
+        Vul gewoon het aantal gewonnen games per set in — ook een gelijke stand of een onvolledige set
+        (bv. door de tijdslimiet van 90 minuten) mag gerust. 1 tot 3 sets.
       </p>
       <div id="setInputs"></div>
       <div class="btn-row">
@@ -309,11 +326,9 @@ function maandLabelKort(iso){
 /* ============ TENNISREGELS: setvalidatie ============ */
 function geldigeSet(a, b){
   a = parseInt(a); b = parseInt(b);
-  if(isNaN(a) || isNaN(b)) return null;
-  if((a===6 && b<=4) || (b===6 && a<=4)) return a>b?1:2;
-  if((a===7 && b===5) || (b===7 && a===5)) return a>b?1:2;
-  if((a===7 && b===6) || (b===7 && a===6)) return a>b?1:2;
-  return false; // ongeldig
+  if(isNaN(a) || isNaN(b)) return null; // lege set: overslaan
+  if(a < 0 || b < 0 || a > 30 || b > 30) return false; // enkel duidelijk onmogelijke waarden weigeren
+  return true; // alles daartussen mag: gelijke stand, onvolledige set (tijdslimiet), officiële eindstand, ...
 }
 
 /* ============ KALENDER ============ */
@@ -325,24 +340,27 @@ function renderKalender(){
   container.innerHTML = '';
   ROTATIE.forEach(wk => {
     const gespeeld = matchVoorDatum(wk.datum);
+    const teamA = gespeeld ? gespeeld.team1 : wk.team1;
+    const teamB = gespeeld ? gespeeld.team2 : wk.team2;
     const div = document.createElement('div');
     div.className = 'week-item' + (gespeeld ? ' gespeeld' : '');
     const kerstNote = KERST_DATUMS.includes(wk.datum) ? ' <span style="color:#c0392b">(kerstvakantie — check zelf of dit doorgaat)</span>' : '';
     div.innerHTML = `
       <div class="wk-top">
         <span class="wk-datum">${maandLabelKort(wk.datum)}${kerstNote}</span>
-        <span class="wk-status ${gespeeld?'done':''}">${gespeeld ? '✓ gespeeld' : 'nog te spelen'}</span>
+        <span class="wk-status ${gespeeld?'done':''}">${gespeeld ? (gespeeld.winnaar===0 ? '✓ gelijkspel' : '✓ gespeeld') : 'nog te spelen'}</span>
       </div>
       <div class="team-row">
-        <div class="avatars">${avatarHTML(wk.team1[0],30)}${avatarHTML(wk.team1[1],30)}</div>
-        <span class="namen">${wk.team1.join(' & ')}</span>
+        <div class="avatars">${avatarHTML(teamA[0],30)}${avatarHTML(teamA[1],30)}</div>
+        <span class="namen">${teamA.join(' & ')}</span>
       </div>
       <div class="vs">vs</div>
       <div class="team-row">
-        <div class="avatars">${avatarHTML(wk.team2[0],30)}${avatarHTML(wk.team2[1],30)}</div>
-        <span class="namen">${wk.team2.join(' & ')}</span>
+        <div class="avatars">${avatarHTML(teamB[0],30)}${avatarHTML(teamB[1],30)}</div>
+        <span class="namen">${teamB.join(' & ')}</span>
       </div>
       <div class="rust-lbl">Rust: ${wk.rust.join(' & ')}</div>
+      ${!gespeeld ? '<div class="voorstel-note">Ploegindeling hierboven is een voorstel — wordt \'s avonds zelf bepaald bij het ingeven van de score.</div>' : ''}
     `;
     container.appendChild(div);
   });
@@ -370,20 +388,118 @@ function vulDatumDropdown(){
 function huidigeWeek(){
   return ROTATIE.find(wk => wk.datum === datumSelect.value);
 }
+
+let huidigeTeamA = []; // namen die vanavond in team A zitten (2 van de 4 spelers)
+let huidigeSpelersVanavond = []; // 4 namen die vanavond spelen — elk vervangbaar door een gastspeler
+
 function toonMatchInfo(){
   const wk = huidigeWeek();
   if(!wk) return;
   const bestaande = matchVoorDatum(wk.datum);
+
+  huidigeSpelersVanavond = bestaande ? [...bestaande.team1, ...bestaande.team2] : [...wk.team1, ...wk.team2];
+  huidigeTeamA = bestaande ? bestaande.team1.slice() : wk.team1.slice();
+
   document.getElementById('matchInfo').innerHTML = `
-    <div class="team-row"><div class="avatars">${avatarHTML(wk.team1[0],30)}${avatarHTML(wk.team1[1],30)}</div><span class="namen"><b>${wk.team1.join(' & ')}</b></span></div>
-    <div class="vs">vs</div>
-    <div class="team-row"><div class="avatars">${avatarHTML(wk.team2[0],30)}${avatarHTML(wk.team2[1],30)}</div><span class="namen"><b>${wk.team2.join(' & ')}</b></span></div>
-    <div class="rust-lbl">Rust: ${wk.rust.join(' & ')}</div>
+    <div class="rust-lbl" style="margin-bottom:10px">Rust volgens schema: <b>${wk.rust.join(' & ')}</b></div>
+    <div class="team-kies-lbl">Wie speelt vanavond? (kan er iemand niet, vervang die door een gastspeler)</div>
+    <div class="chip-grid" id="spelerSlots"></div>
+    <div class="team-kies-lbl">Wie speelt met wie? (tik een naam om te wisselen van team — voorstel, vrij aan te passen)</div>
+    <div class="chip-grid" id="teamChips"></div>
+    <div id="teamVsPreview" style="margin-top:12px"></div>
     ${bestaande ? '<p style="color:var(--groen);font-size:12px;margin-top:8px;text-align:center">Er is al een score voor deze datum — opslaan overschrijft die.</p>' : ''}
   `;
+  renderSpelerSlots();
+  renderTeamChips();
   vulSetInputs(bestaande ? bestaande.sets : [{a:'',b:''}]);
 }
 datumSelect.addEventListener('change', toonMatchInfo);
+
+function renderSpelerSlots(){
+  const container = document.getElementById('spelerSlots');
+  container.innerHTML = '';
+  huidigeSpelersVanavond.forEach((naam, idx) => {
+    const isGast = !SPELERS.includes(naam);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+    const sel = document.createElement('select');
+    sel.style.fontSize = '13px';
+    const opties = [...SPELERS, 'Gastspeler...'];
+    opties.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o;
+      opt.textContent = o;
+      if((isGast && o === 'Gastspeler...') || (!isGast && o === naam)) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    const gastInput = document.createElement('input');
+    gastInput.type = 'text';
+    gastInput.placeholder = 'Naam gastspeler';
+    gastInput.style.cssText = 'font-size:13px;' + (isGast ? '' : 'display:none;');
+    if(isGast) gastInput.value = naam;
+
+    sel.addEventListener('change', () => {
+      if(sel.value === 'Gastspeler...'){
+        gastInput.style.display = '';
+        gastInput.value = '';
+        gastInput.focus();
+      } else {
+        gastInput.style.display = 'none';
+        vervangSpeler(idx, huidigeSpelersVanavond[idx], sel.value);
+      }
+    });
+    gastInput.addEventListener('input', () => {
+      if(gastInput.value.trim()) vervangSpeler(idx, huidigeSpelersVanavond[idx], gastInput.value.trim());
+    });
+
+    wrap.appendChild(sel);
+    wrap.appendChild(gastInput);
+    container.appendChild(wrap);
+  });
+}
+function vervangSpeler(idx, oudeNaam, nieuweNaam){
+  huidigeSpelersVanavond[idx] = nieuweNaam;
+  const teamAIdx = huidigeTeamA.indexOf(oudeNaam);
+  if(teamAIdx !== -1) huidigeTeamA[teamAIdx] = nieuweNaam;
+  renderTeamChips();
+}
+
+function renderTeamChips(){
+  const container = document.getElementById('teamChips');
+  container.innerHTML = '';
+  huidigeSpelersVanavond.forEach(naam => {
+    const inTeamA = huidigeTeamA.includes(naam);
+    const chip = document.createElement('div');
+    chip.className = 'speler-chip ' + (inTeamA ? 'team-a' : 'team-b');
+    chip.innerHTML = `${avatarHTML(naam,28)}<span>${naam}</span><span class="badge">${inTeamA ? 'Team A' : 'Team B'}</span>`;
+    chip.addEventListener('click', () => {
+      if(huidigeTeamA.includes(naam)){
+        if(huidigeTeamA.length <= 1){ showToast('Elk team heeft minstens 1 speler nodig — wissel via de andere speler.'); return; }
+        huidigeTeamA = huidigeTeamA.filter(n => n !== naam);
+      } else {
+        if(huidigeTeamA.length >= 2){ showToast('Team A heeft al 2 spelers — tik eerst op een teamgenoot om te wisselen.'); return; }
+        huidigeTeamA.push(naam);
+      }
+      renderTeamChips();
+      toonTeamPreview();
+    });
+    container.appendChild(chip);
+  });
+  toonTeamPreview();
+}
+function toonTeamPreview(){
+  const teamB = huidigeSpelersVanavond.filter(n => !huidigeTeamA.includes(n));
+  const preview = document.getElementById('teamVsPreview');
+  if(huidigeTeamA.length === 2 && teamB.length === 2){
+    preview.innerHTML = `
+      <div class="team-row"><div class="avatars">${avatarHTML(huidigeTeamA[0],30)}${avatarHTML(huidigeTeamA[1],30)}</div><span class="namen"><b>${huidigeTeamA.join(' & ')}</b></span></div>
+      <div class="vs">vs</div>
+      <div class="team-row"><div class="avatars">${avatarHTML(teamB[0],30)}${avatarHTML(teamB[1],30)}</div><span class="namen"><b>${teamB.join(' & ')}</b></span></div>
+    `;
+  } else {
+    preview.innerHTML = `<p class="voorstel-note">Kies precies 2 spelers voor Team A (tik chips om te wisselen).</p>`;
+  }
+}
 
 function vulSetInputs(sets){
   const container = document.getElementById('setInputs');
@@ -393,14 +509,13 @@ function vulSetInputs(sets){
 function voegSetInputToe(a, b){
   const container = document.getElementById('setInputs');
   const idx = container.children.length + 1;
-  const wk = huidigeWeek();
   const div = document.createElement('div');
   div.className = 'set-input-row';
   div.innerHTML = `
     <label>Set ${idx}</label>
-    <input type="number" min="0" max="7" class="setA" value="${a!==undefined?a:''}">
+    <input type="number" min="0" max="30" class="setA" value="${a!==undefined?a:''}">
     <span class="vs-lbl">–</span>
-    <input type="number" min="0" max="7" class="setB" value="${b!==undefined?b:''}">
+    <input type="number" min="0" max="30" class="setB" value="${b!==undefined?b:''}">
   `;
   container.appendChild(div);
 }
@@ -412,9 +527,15 @@ document.getElementById('btnSetToevoegen').addEventListener('click', () => {
 
 document.getElementById('btnScoreOpslaan').addEventListener('click', async () => {
   const wk = huidigeWeek();
+  const teamB = huidigeSpelersVanavond.filter(n => !huidigeTeamA.includes(n));
+  if(huidigeTeamA.length !== 2 || teamB.length !== 2){
+    showToast('Kies eerst precies 2 spelers voor Team A.');
+    return;
+  }
+  const team1 = huidigeTeamA, team2 = teamB;
+
   const rows = document.querySelectorAll('#setInputs .set-input-row');
   const sets = [];
-  let team1Sets = 0, team2Sets = 0;
   let fout = null;
 
   rows.forEach((row, i) => {
@@ -423,24 +544,26 @@ document.getElementById('btnScoreOpslaan').addEventListener('click', async () =>
     if(a === '' && b === '') return; // lege set overslaan
     const res = geldigeSet(a, b);
     if(res === false){
-      fout = `Set ${i+1} (${a}-${b}) is geen geldige tennisscore.`;
+      fout = `Set ${i+1} (${a}-${b}) — vul een realistisch aantal games in (0 t.e.m. 30).`;
       return;
     }
     if(res === null) return;
     sets.push({a: parseInt(a), b: parseInt(b)});
-    if(res === 1) team1Sets++; else team2Sets++;
   });
 
   if(fout){ showToast(fout); return; }
-  if(sets.length === 0){ showToast('Vul minstens 1 geldige set in.'); return; }
-  if(team1Sets === team2Sets){ showToast('Gelijke stand in sets — voeg een beslissende set toe.'); return; }
+  if(sets.length === 0){ showToast('Vul minstens 1 set in (ook een onvolledige set mag).'); return; }
 
-  const winnaar = team1Sets > team2Sets ? 1 : 2;
+  const team1Games = sets.reduce((s,x) => s + x.a, 0);
+  const team2Games = sets.reduce((s,x) => s + x.b, 0);
+  // winnaar: 1 of 2 op basis van meeste games in totaal; 0 = gelijkspel (mag ook, bv. bij tijd op)
+  const winnaar = team1Games > team2Games ? 1 : (team2Games > team1Games ? 2 : 0);
+
   try{
     await setDoc(doc(db, 'tennisMatches', wk.datum), {
-      datum: wk.datum, team1: wk.team1, team2: wk.team2, sets, winnaar
+      datum: wk.datum, team1, team2, sets, winnaar
     });
-    showToast('Score opgeslagen.');
+    showToast(winnaar === 0 ? 'Score opgeslagen (gelijkspel).' : 'Score opgeslagen.');
   }catch(e){
     console.error(e);
     showToast('Kon niet opslaan — controleer je internetverbinding.');
@@ -454,18 +577,22 @@ function renderKlassement(){
   const ploegStats = {}; // key = sorted names joined
 
   matches.forEach(m => {
-    const winTeam = m.winnaar === 1 ? m.team1 : m.team2;
-    const verliesTeam = m.winnaar === 1 ? m.team2 : m.team1;
-    [...m.team1, ...m.team2].forEach(naam => { if(spelerStats[naam]) spelerStats[naam].gespeeld++; });
-    winTeam.forEach(naam => { if(spelerStats[naam]) spelerStats[naam].gewonnen++; });
+    const winTeam = m.winnaar === 1 ? m.team1 : (m.winnaar === 2 ? m.team2 : null); // null = gelijkspel
+    [...m.team1, ...m.team2].forEach(naam => {
+      if(!spelerStats[naam]) spelerStats[naam] = {gespeeld:0, gewonnen:0, gast:!SPELERS.includes(naam)};
+      spelerStats[naam].gespeeld++;
+    });
+    if(winTeam) winTeam.forEach(naam => { spelerStats[naam].gewonnen++; });
 
     [m.team1, m.team2].forEach(team => {
       const key = [...team].sort().join(' & ');
       if(!ploegStats[key]) ploegStats[key] = {namen: team, gespeeld:0, gewonnen:0};
       ploegStats[key].gespeeld++;
     });
-    const winKey = [...winTeam].sort().join(' & ');
-    ploegStats[winKey].gewonnen++;
+    if(winTeam){
+      const winKey = [...winTeam].sort().join(' & ');
+      ploegStats[winKey].gewonnen++;
+    }
   });
 
   const spelerLijst = Object.keys(spelerStats).map(naam => ({
@@ -482,7 +609,7 @@ function renderKlassement(){
       const div = document.createElement('div');
       div.className = 'standing-row' + (idx===0 ? ' lead' : '');
       div.innerHTML = `
-        <div class="naam-wrap">${avatarHTML(s.naam,34)}<span class="rank">#${idx+1}</span><span class="naam">${s.naam}</span></div>
+        <div class="naam-wrap">${avatarHTML(s.naam,34)}<span class="rank">#${idx+1}</span><span class="naam">${s.naam}${s.gast ? ' <span style="font-size:10px;color:var(--muted);font-weight:normal">(gast)</span>' : ''}</span></div>
         <div class="stats"><b>${s.gewonnen}</b>/${s.gespeeld} gewonnen (${Math.round(s.pct*100)}%)</div>
       `;
       container1.appendChild(div);
