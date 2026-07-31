@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tennis Heiveld</title>
+<link rel="apple-touch-icon" href="icon-tennis.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tennis">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1F4D2E">
+<style>
+  :root{
+    --groen:#1F4D2E;
+    --groen-dark:#123320;
+    --geel:#D4E157;
+    --geel-dark:#AFB42B;
+    --cream:#FAF8F0;
+    --ink:#28241E;
+    --muted:#7A8577;
+    --rood:#B8412F;
+    --line:#E4E0D2;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0;
+    font-family:'Georgia','Times New Roman',serif;
+    background:var(--cream);
+    color:var(--ink);
+    padding:20px 14px 60px;
+  }
+  .wrap{max-width:720px;margin:0 auto;}
+  header{text-align:center;margin-bottom:18px;}
+  header .ball{font-size:26px;}
+  h1{font-size:24px;margin:6px 0 2px;color:var(--groen-dark);}
+  .subtitle{color:#6b5d4f;font-size:13px;margin:0;}
+
+  .tabs{display:flex;gap:8px;margin:18px 0;justify-content:center;flex-wrap:wrap;}
+  .tab-btn{
+    background:#fff;border:1px solid var(--geel-dark);color:var(--groen-dark);
+    padding:8px 16px;border-radius:20px;font-size:14px;cursor:pointer;font-family:inherit;
+  }
+  .tab-btn.active{background:var(--groen);color:#fff;border-color:var(--groen);}
+
+  .card{
+    background:#fff;border-radius:10px;padding:18px;margin-bottom:16px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .card h2{font-size:17px;color:var(--groen);margin:0 0 12px;border-bottom:2px solid var(--geel-dark);padding-bottom:6px;}
+
+  label{display:block;font-size:13px;color:#6b5d4f;margin:10px 0 4px;}
+  select, input[type=number], input[type=text], input[type=file]{
+    width:100%;padding:9px 10px;border:1px solid #ddd0b8;border-radius:6px;
+    font-family:inherit;font-size:14px;background:#fffdf8;color:var(--ink);
+  }
+  .btn{
+    display:inline-block;background:var(--groen);color:#fff;border:none;
+    padding:11px 20px;border-radius:24px;font-size:14px;cursor:pointer;
+    font-family:inherit;letter-spacing:0.3px;
+  }
+  .btn:hover{background:var(--groen-dark);}
+  .btn.secondary{background:#fff;color:var(--groen);border:1px solid var(--groen);}
+  .btn.full{width:100%;text-align:center;}
+  .btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+
+  .avatar{
+    width:42px;height:42px;border-radius:50%;object-fit:cover;
+    border:2px solid var(--geel-dark);background:#eee;flex-shrink:0;
+  }
+  .avatar.placeholder{display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:bold;color:var(--groen-dark);background:#eef3ea;}
+
+  .week-item{
+    display:flex;flex-direction:column;gap:8px;background:#fbf8f0;border-radius:8px;
+    padding:12px 14px;margin-bottom:10px;border-left:5px solid var(--geel-dark);
+  }
+  .week-item.gespeeld{border-left-color:var(--groen);}
+  .week-item .wk-top{display:flex;justify-content:space-between;align-items:center;}
+  .week-item .wk-datum{font-weight:bold;font-size:14px;color:var(--groen-dark);}
+  .week-item .wk-status{font-size:11px;color:var(--muted);}
+  .week-item .wk-status.done{color:var(--groen);font-weight:bold;}
+  .team-row{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .team-row .namen{flex:1;}
+  .team-row .avatars{display:flex;gap:-6px;}
+  .team-row .avatars .avatar{width:30px;height:30px;margin-left:-8px;font-size:11px;}
+  .team-row .avatars .avatar:first-child{margin-left:0;}
+  .vs{font-size:11px;color:var(--muted);text-align:center;}
+  .rust-lbl{font-size:11px;color:var(--muted);text-align:center;padding-top:2px;border-top:1px dashed var(--line);}
+
+  .standing-row{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:#fbf8f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;
+    border-left:5px solid var(--geel-dark);
+  }
+  .standing-row.lead{border-left-color:var(--groen);background:#eef5ee;}
+  .standing-row .naam-wrap{display:flex;align-items:center;gap:10px;}
+  .standing-row .rank{color:#a8a08a;font-size:12px;}
+  .standing-row .naam{font-weight:bold;font-size:14px;}
+  .standing-row .stats{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .standing-row .stats b{color:var(--ink);}
+
+  .set-input-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .set-input-row label{margin:0;min-width:52px;font-size:13px;}
+  .set-input-row input{width:64px;text-align:center;}
+  .set-input-row .vs-lbl{color:var(--muted);font-size:13px;}
+
+  .empty-msg{color:#a08a6a;font-size:13px;text-align:center;padding:20px 0;}
+  .hidden{display:none;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(43,35,32,0.55);
+    display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;
+  }
+  .modal-box{
+    background:#fff;border-radius:12px;padding:24px 22px;max-width:360px;width:100%;
+    box-shadow:0 8px 30px rgba(0,0,0,0.25);text-align:center;
+  }
+  .modal-box p{font-size:15px;color:var(--ink);margin:0 0 18px;line-height:1.5;}
+  .modal-box .btn-row{justify-content:center;}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+    background:var(--groen-dark);color:#fff;padding:12px 20px;border-radius:24px;
+    font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:1000;
+    max-width:90%;text-align:center;
+  }
+  .speler-rij{display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--line);}
+  .speler-rij:last-child{border-bottom:none;}
+  .speler-rij .naam{flex:1;font-weight:bold;font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="ball">🎾</div>
+    <h1>Tennis Heiveld</h1>
+    <p class="subtitle">Woensdag 18u30–20u · seizoen sept 2026 – april 2027</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="kalender">Kalender</button>
+    <button class="tab-btn" data-tab="score">Score ingeven</button>
+    <button class="tab-btn" data-tab="klassement">Klassement</button>
+    <button class="tab-btn" data-tab="spelers">Spelers</button>
+  </div>
+
+  <!-- KALENDER -->
+  <div id="tab-kalender">
+    <div class="card">
+      <h2>Volledig seizoen</h2>
+      <div id="kalenderLijst"></div>
+    </div>
+  </div>
+
+  <!-- SCORE INGEVEN -->
+  <div id="tab-score" class="hidden">
+    <div class="card">
+      <h2>Kies een speeldatum</h2>
+      <select id="datumSelect"></select>
+      <div id="matchInfo" style="margin-top:14px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Uitslag (per set)</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:-6px">
+        Geldige tennisscores: 6-0 t/m 6-4, 7-5, of 7-6 (tiebreak). Vul 1 tot 3 sets in.
+      </p>
+      <div id="setInputs"></div>
+      <div class="btn-row">
+        <button class="btn secondary" id="btnSetToevoegen">+ Extra set</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn full" id="btnScoreOpslaan">Score opslaan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KLASSEMENT -->
+  <div id="tab-klassement" class="hidden">
+    <div class="card">
+      <h2>🏆 Beste speler (individueel)</h2>
+      <div id="klassementSpelers"><div class="empty-msg">Nog geen wedstrijden gespeeld.</div></div>
+    </div>
+    <div class="card">
+      <h2>🏆 Beste ploeg</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:-6px">Combinaties die minstens 1x samen speelden.</p>
+      <div id="klassementPloegen"><div class="empty-msg">Nog geen wedstrijden gespeeld.</div></div>
+    </div>
+  </div>
+
+  <!-- SPELERS -->
+  <div id="tab-spelers" class="hidden">
+    <div class="card">
+      <h2>Foto's</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:-6px">Tik op een naam om een foto te kiezen of te wijzigen.</p>
+      <div id="spelersLijst"></div>
+      <input type="file" id="fotoInput" accept="image/*" class="hidden">
+    </div>
+  </div>
+</div>
+
+<div id="modalContainer"></div>
+<div id="toastContainer"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import {
+  getFirestore, doc, setDoc, onSnapshot,
+  collection, query, orderBy
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC399MvSiF3PWF_ZTdFr0UqaoC6Fo7WsrY",
+  authDomain: "wiezen-club.firebaseapp.com",
+  projectId: "wiezen-club",
+  storageBucket: "wiezen-club.firebasestorage.app",
+  messagingSenderId: "184449254432",
+  appId: "1:184449254432:web:e4f4f93acae57a9a736845"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+const matchesCollRef = collection(db, 'tennisMatches');
+const spelersDocRef = doc(db, 'tennisMeta', 'spelers');
+
+const SPELERS = ["Lode", "Kristel", "Paul", "Jos", "Danny", "Luc"];
+
+const ROTATIE = [
+  {datum:"2026-09-02",rust:["Kristel","Luc"],team1:["Lode","Paul"],team2:["Jos","Danny"]},
+  {datum:"2026-09-09",rust:["Lode","Jos"],team1:["Kristel","Luc"],team2:["Paul","Danny"]},
+  {datum:"2026-09-16",rust:["Paul","Danny"],team1:["Lode","Kristel"],team2:["Jos","Luc"]},
+  {datum:"2026-09-23",rust:["Jos","Danny"],team1:["Lode","Luc"],team2:["Kristel","Paul"]},
+  {datum:"2026-09-30",rust:["Kristel","Paul"],team1:["Lode","Jos"],team2:["Danny","Luc"]},
+  {datum:"2026-10-07",rust:["Lode","Luc"],team1:["Kristel","Danny"],team2:["Paul","Jos"]},
+  {datum:"2026-10-14",rust:["Paul","Jos"],team1:["Lode","Danny"],team2:["Kristel","Luc"]},
+  {datum:"2026-10-21",rust:["Danny","Luc"],team1:["Lode","Paul"],team2:["Kristel","Jos"]},
+  {datum:"2026-10-28",rust:["Lode","Kristel"],team1:["Paul","Luc"],team2:["Jos","Danny"]},
+  {datum:"2026-11-04",rust:["Paul","Luc"],team1:["Lode","Jos"],team2:["Kristel","Danny"]},
+  {datum:"2026-11-11",rust:["Kristel","Jos"],team1:["Lode","Luc"],team2:["Paul","Danny"]},
+  {datum:"2026-11-18",rust:["Lode","Danny"],team1:["Kristel","Jos"],team2:["Paul","Luc"]},
+  {datum:"2026-11-25",rust:["Jos","Luc"],team1:["Lode","Danny"],team2:["Kristel","Paul"]},
+  {datum:"2026-12-02",rust:["Lode","Paul"],team1:["Kristel","Jos"],team2:["Danny","Luc"]},
+  {datum:"2026-12-09",rust:["Kristel","Danny"],team1:["Lode","Paul"],team2:["Jos","Luc"]},
+  {datum:"2026-12-16",rust:["Lode","Luc"],team1:["Kristel","Danny"],team2:["Paul","Jos"]},
+  {datum:"2026-12-23",rust:["Jos","Danny"],team1:["Lode","Kristel"],team2:["Paul","Luc"]},
+  {datum:"2026-12-30",rust:["Kristel","Paul"],team1:["Lode","Luc"],team2:["Jos","Danny"]},
+  {datum:"2027-01-06",rust:["Paul","Danny"],team1:["Lode","Kristel"],team2:["Jos","Luc"]},
+  {datum:"2027-01-13",rust:["Lode","Kristel"],team1:["Paul","Jos"],team2:["Danny","Luc"]},
+  {datum:"2027-01-20",rust:["Jos","Luc"],team1:["Lode","Danny"],team2:["Kristel","Paul"]},
+  {datum:"2027-01-27",rust:["Lode","Danny"],team1:["Kristel","Luc"],team2:["Paul","Jos"]},
+  {datum:"2027-02-03",rust:["Paul","Luc"],team1:["Lode","Jos"],team2:["Kristel","Danny"]},
+  {datum:"2027-02-10",rust:["Kristel","Jos"],team1:["Lode","Luc"],team2:["Paul","Danny"]},
+  {datum:"2027-02-17",rust:["Paul","Jos"],team1:["Lode","Kristel"],team2:["Danny","Luc"]},
+  {datum:"2027-02-24",rust:["Danny","Luc"],team1:["Lode","Paul"],team2:["Kristel","Jos"]},
+  {datum:"2027-03-03",rust:["Kristel","Luc"],team1:["Lode","Jos"],team2:["Paul","Danny"]},
+  {datum:"2027-03-10",rust:["Lode","Paul"],team1:["Kristel","Luc"],team2:["Jos","Danny"]},
+  {datum:"2027-03-17",rust:["Kristel","Danny"],team1:["Lode","Paul"],team2:["Jos","Luc"]},
+  {datum:"2027-03-24",rust:["Lode","Jos"],team1:["Kristel","Paul"],team2:["Danny","Luc"]},
+  {datum:"2027-03-31",rust:["Paul","Luc"],team1:["Lode","Danny"],team2:["Kristel","Jos"]},
+  {datum:"2027-04-07",rust:["Jos","Danny"],team1:["Lode","Kristel"],team2:["Paul","Luc"]},
+  {datum:"2027-04-14",rust:["Lode","Kristel"],team1:["Paul","Luc"],team2:["Jos","Danny"]},
+  {datum:"2027-04-21",rust:["Kristel","Luc"],team1:["Lode","Jos"],team2:["Paul","Danny"]},
+  {datum:"2027-04-28",rust:["Lode","Paul"],team1:["Kristel","Danny"],team2:["Jos","Luc"]}
+];
+const KERST_DATUMS = ["2026-12-23","2026-12-30"];
+
+/* ============ MODAL / TOAST ============ */
+function showConfirm(message, onYes){
+  const c = document.getElementById('modalContainer');
+  c.innerHTML = `<div class="modal-overlay"><div class="modal-box"><p>${message}</p>
+    <div class="btn-row"><button class="btn secondary" id="mCancel">Annuleren</button>
+    <button class="btn" id="mOk">Ja, doorgaan</button></div></div></div>`;
+  document.getElementById('mCancel').addEventListener('click', () => c.innerHTML = '');
+  document.getElementById('mOk').addEventListener('click', () => { c.innerHTML = ''; onYes(); });
+}
+function showToast(msg){
+  const c = document.getElementById('toastContainer');
+  c.innerHTML = `<div class="toast">${msg}</div>`;
+  setTimeout(() => c.innerHTML = '', 3000);
+}
+
+/* ============ DATA ============ */
+let spelersFotos = {};
+let matches = [];
+
+onSnapshot(spelersDocRef, (snap) => {
+  spelersFotos = snap.exists() ? snap.data() : {};
+  renderAll();
+}, (err) => console.error('spelers sync error', err));
+
+onSnapshot(query(matchesCollRef, orderBy('datum', 'asc')), (snap) => {
+  matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderAll();
+}, (err) => console.error('matches sync error', err));
+
+function avatarHTML(naam, size){
+  size = size || 42;
+  const foto = spelersFotos[naam];
+  if(foto){
+    return `<img class="avatar" style="width:${size}px;height:${size}px" src="${foto}" alt="${naam}">`;
+  }
+  const letter = naam.charAt(0);
+  return `<div class="avatar placeholder" style="width:${size}px;height:${size}px">${letter}</div>`;
+}
+
+function maandLabelKort(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('nl-BE', {day:'numeric', month:'short', year:'numeric'});
+}
+
+/* ============ TENNISREGELS: setvalidatie ============ */
+function geldigeSet(a, b){
+  a = parseInt(a); b = parseInt(b);
+  if(isNaN(a) || isNaN(b)) return null;
+  if((a===6 && b<=4) || (b===6 && a<=4)) return a>b?1:2;
+  if((a===7 && b===5) || (b===7 && a===5)) return a>b?1:2;
+  if((a===7 && b===6) || (b===7 && a===6)) return a>b?1:2;
+  return false; // ongeldig
+}
+
+/* ============ KALENDER ============ */
+function matchVoorDatum(datum){
+  return matches.find(m => m.datum === datum);
+}
+function renderKalender(){
+  const container = document.getElementById('kalenderLijst');
+  container.innerHTML = '';
+  ROTATIE.forEach(wk => {
+    const gespeeld = matchVoorDatum(wk.datum);
+    const div = document.createElement('div');
+    div.className = 'week-item' + (gespeeld ? ' gespeeld' : '');
+    const kerstNote = KERST_DATUMS.includes(wk.datum) ? ' <span style="color:#c0392b">(kerstvakantie — check zelf of dit doorgaat)</span>' : '';
+    div.innerHTML = `
+      <div class="wk-top">
+        <span class="wk-datum">${maandLabelKort(wk.datum)}${kerstNote}</span>
+        <span class="wk-status ${gespeeld?'done':''}">${gespeeld ? '✓ gespeeld' : 'nog te spelen'}</span>
+      </div>
+      <div class="team-row">
+        <div class="avatars">${avatarHTML(wk.team1[0],30)}${avatarHTML(wk.team1[1],30)}</div>
+        <span class="namen">${wk.team1.join(' & ')}</span>
+      </div>
+      <div class="vs">vs</div>
+      <div class="team-row">
+        <div class="avatars">${avatarHTML(wk.team2[0],30)}${avatarHTML(wk.team2[1],30)}</div>
+        <span class="namen">${wk.team2.join(' & ')}</span>
+      </div>
+      <div class="rust-lbl">Rust: ${wk.rust.join(' & ')}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/* ============ SCORE INGEVEN ============ */
+const datumSelect = document.getElementById('datumSelect');
+let datumDropdownGeinitialiseerd = false;
+function vulDatumDropdown(){
+  const huidigeSelectie = datumSelect.value;
+  datumSelect.innerHTML = ROTATIE.map(wk => {
+    const gespeeld = matchVoorDatum(wk.datum) ? ' ✓' : '';
+    return `<option value="${wk.datum}">${maandLabelKort(wk.datum)}${gespeeld}</option>`;
+  }).join('');
+
+  if(!datumDropdownGeinitialiseerd){
+    const eersteOnbespeelde = ROTATIE.find(wk => !matchVoorDatum(wk.datum));
+    if(eersteOnbespeelde) datumSelect.value = eersteOnbespeelde.datum;
+    datumDropdownGeinitialiseerd = true;
+    toonMatchInfo();
+  } else if(huidigeSelectie){
+    datumSelect.value = huidigeSelectie; // behoud keuze, herteken formulier niet (voorkomt verlies van ingave)
+  }
+}
+function huidigeWeek(){
+  return ROTATIE.find(wk => wk.datum === datumSelect.value);
+}
+function toonMatchInfo(){
+  const wk = huidigeWeek();
+  if(!wk) return;
+  const bestaande = matchVoorDatum(wk.datum);
+  document.getElementById('matchInfo').innerHTML = `
+    <div class="team-row"><div class="avatars">${avatarHTML(wk.team1[0],30)}${avatarHTML(wk.team1[1],30)}</div><span class="namen"><b>${wk.team1.join(' & ')}</b></span></div>
+    <div class="vs">vs</div>
+    <div class="team-row"><div class="avatars">${avatarHTML(wk.team2[0],30)}${avatarHTML(wk.team2[1],30)}</div><span class="namen"><b>${wk.team2.join(' & ')}</b></span></div>
+    <div class="rust-lbl">Rust: ${wk.rust.join(' & ')}</div>
+    ${bestaande ? '<p style="color:var(--groen);font-size:12px;margin-top:8px;text-align:center">Er is al een score voor deze datum — opslaan overschrijft die.</p>' : ''}
+  `;
+  vulSetInputs(bestaande ? bestaande.sets : [{a:'',b:''}]);
+}
+datumSelect.addEventListener('change', toonMatchInfo);
+
+function vulSetInputs(sets){
+  const container = document.getElementById('setInputs');
+  container.innerHTML = '';
+  sets.forEach((s, i) => voegSetInputToe(s.a, s.b));
+}
+function voegSetInputToe(a, b){
+  const container = document.getElementById('setInputs');
+  const idx = container.children.length + 1;
+  const wk = huidigeWeek();
+  const div = document.createElement('div');
+  div.className = 'set-input-row';
+  div.innerHTML = `
+    <label>Set ${idx}</label>
+    <input type="number" min="0" max="7" class="setA" value="${a!==undefined?a:''}">
+    <span class="vs-lbl">–</span>
+    <input type="number" min="0" max="7" class="setB" value="${b!==undefined?b:''}">
+  `;
+  container.appendChild(div);
+}
+document.getElementById('btnSetToevoegen').addEventListener('click', () => {
+  const count = document.getElementById('setInputs').children.length;
+  if(count >= 3){ showToast('Maximaal 3 sets per wedstrijd.'); return; }
+  voegSetInputToe('', '');
+});
+
+document.getElementById('btnScoreOpslaan').addEventListener('click', async () => {
+  const wk = huidigeWeek();
+  const rows = document.querySelectorAll('#setInputs .set-input-row');
+  const sets = [];
+  let team1Sets = 0, team2Sets = 0;
+  let fout = null;
+
+  rows.forEach((row, i) => {
+    const a = row.querySelector('.setA').value;
+    const b = row.querySelector('.setB').value;
+    if(a === '' && b === '') return; // lege set overslaan
+    const res = geldigeSet(a, b);
+    if(res === false){
+      fout = `Set ${i+1} (${a}-${b}) is geen geldige tennisscore.`;
+      return;
+    }
+    if(res === null) return;
+    sets.push({a: parseInt(a), b: parseInt(b)});
+    if(res === 1) team1Sets++; else team2Sets++;
+  });
+
+  if(fout){ showToast(fout); return; }
+  if(sets.length === 0){ showToast('Vul minstens 1 geldige set in.'); return; }
+  if(team1Sets === team2Sets){ showToast('Gelijke stand in sets — voeg een beslissende set toe.'); return; }
+
+  const winnaar = team1Sets > team2Sets ? 1 : 2;
+  try{
+    await setDoc(doc(db, 'tennisMatches', wk.datum), {
+      datum: wk.datum, team1: wk.team1, team2: wk.team2, sets, winnaar
+    });
+    showToast('Score opgeslagen.');
+  }catch(e){
+    console.error(e);
+    showToast('Kon niet opslaan — controleer je internetverbinding.');
+  }
+});
+
+/* ============ KLASSEMENT ============ */
+function renderKlassement(){
+  const spelerStats = {};
+  SPELERS.forEach(s => spelerStats[s] = {gespeeld:0, gewonnen:0});
+  const ploegStats = {}; // key = sorted names joined
+
+  matches.forEach(m => {
+    const winTeam = m.winnaar === 1 ? m.team1 : m.team2;
+    const verliesTeam = m.winnaar === 1 ? m.team2 : m.team1;
+    [...m.team1, ...m.team2].forEach(naam => { if(spelerStats[naam]) spelerStats[naam].gespeeld++; });
+    winTeam.forEach(naam => { if(spelerStats[naam]) spelerStats[naam].gewonnen++; });
+
+    [m.team1, m.team2].forEach(team => {
+      const key = [...team].sort().join(' & ');
+      if(!ploegStats[key]) ploegStats[key] = {namen: team, gespeeld:0, gewonnen:0};
+      ploegStats[key].gespeeld++;
+    });
+    const winKey = [...winTeam].sort().join(' & ');
+    ploegStats[winKey].gewonnen++;
+  });
+
+  const spelerLijst = Object.keys(spelerStats).map(naam => ({
+    naam, ...spelerStats[naam],
+    pct: spelerStats[naam].gespeeld ? spelerStats[naam].gewonnen / spelerStats[naam].gespeeld : 0
+  })).filter(s => s.gespeeld > 0).sort((a,b) => b.pct - a.pct || b.gewonnen - a.gewonnen);
+
+  const container1 = document.getElementById('klassementSpelers');
+  if(spelerLijst.length === 0){
+    container1.innerHTML = '<div class="empty-msg">Nog geen wedstrijden gespeeld.</div>';
+  } else {
+    container1.innerHTML = '';
+    spelerLijst.forEach((s, idx) => {
+      const div = document.createElement('div');
+      div.className = 'standing-row' + (idx===0 ? ' lead' : '');
+      div.innerHTML = `
+        <div class="naam-wrap">${avatarHTML(s.naam,34)}<span class="rank">#${idx+1}</span><span class="naam">${s.naam}</span></div>
+        <div class="stats"><b>${s.gewonnen}</b>/${s.gespeeld} gewonnen (${Math.round(s.pct*100)}%)</div>
+      `;
+      container1.appendChild(div);
+    });
+  }
+
+  const ploegLijst = Object.values(ploegStats).map(p => ({
+    ...p, pct: p.gespeeld ? p.gewonnen/p.gespeeld : 0
+  })).sort((a,b) => b.pct - a.pct || b.gewonnen - a.gewonnen);
+
+  const container2 = document.getElementById('klassementPloegen');
+  if(ploegLijst.length === 0){
+    container2.innerHTML = '<div class="empty-msg">Nog geen wedstrijden gespeeld.</div>';
+  } else {
+    container2.innerHTML = '';
+    ploegLijst.forEach((p, idx) => {
+      const div = document.createElement('div');
+      div.className = 'standing-row' + (idx===0 ? ' lead' : '');
+      div.innerHTML = `
+        <div class="naam-wrap">
+          <div class="avatars" style="display:flex">${avatarHTML(p.namen[0],30)}${avatarHTML(p.namen[1],30)}</div>
+          <span class="rank">#${idx+1}</span><span class="naam">${p.namen.join(' & ')}</span>
+        </div>
+        <div class="stats"><b>${p.gewonnen}</b>/${p.gespeeld} gewonnen (${Math.round(p.pct*100)}%)</div>
+      `;
+      container2.appendChild(div);
+    });
+  }
+}
+
+/* ============ SPELERS / FOTO'S ============ */
+let actieveSpelerFoto = null;
+function renderSpelers(){
+  const container = document.getElementById('spelersLijst');
+  container.innerHTML = '';
+  SPELERS.forEach(naam => {
+    const div = document.createElement('div');
+    div.className = 'speler-rij';
+    div.innerHTML = `${avatarHTML(naam,48)}<span class="naam">${naam}</span><span class="btn secondary" style="padding:6px 14px;font-size:12px">Foto kiezen</span>`;
+    div.querySelector('.btn').addEventListener('click', () => {
+      actieveSpelerFoto = naam;
+      document.getElementById('fotoInput').click();
+    });
+    container.appendChild(div);
+  });
+}
+document.getElementById('fotoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file || !actieveSpelerFoto) return;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = (ev) => { img.src = ev.target.result; };
+  img.onload = async () => {
+    const size = 200;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const minDim = Math.min(img.width, img.height);
+    const sx = (img.width - minDim)/2, sy = (img.height - minDim)/2;
+    ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+    try{
+      await setDoc(spelersDocRef, { [actieveSpelerFoto]: dataUrl }, { merge: true });
+      showToast('Foto van ' + actieveSpelerFoto + ' opgeslagen.');
+    }catch(err){
+      console.error(err);
+      showToast('Kon foto niet opslaan — controleer je internetverbinding.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsDataURL(file);
+});
+
+/* ============ TABS ============ */
+function setActiveTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  ['kalender','score','klassement','spelers'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab);
+  });
+}
+document.querySelectorAll('.tab-btn').forEach(b => {
+  b.addEventListener('click', () => setActiveTab(b.dataset.tab));
+});
+
+/* ============ INIT ============ */
+function renderAll(){
+  renderKalender();
+  vulDatumDropdown();
+  renderKlassement();
+  renderSpelers();
+}
+renderAll();
+</script>
+</body>
+</html>
