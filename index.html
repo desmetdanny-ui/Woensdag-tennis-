@@ -220,7 +220,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, onSnapshot,
+  getFirestore, doc, setDoc, deleteDoc, onSnapshot,
   collection, query, orderBy
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
@@ -407,8 +407,26 @@ function toonMatchInfo(){
     <div class="team-kies-lbl">Wie speelt met wie? (tik een naam om te wisselen van team — voorstel, vrij aan te passen)</div>
     <div class="chip-grid" id="teamChips"></div>
     <div id="teamVsPreview" style="margin-top:12px"></div>
-    ${bestaande ? '<p style="color:var(--groen);font-size:12px;margin-top:8px;text-align:center">Er is al een score voor deze datum — opslaan overschrijft die.</p>' : ''}
+    ${bestaande ? `
+      <p style="color:var(--groen);font-size:12px;margin-top:8px;text-align:center">Er is al een score voor deze datum — opslaan overschrijft die.</p>
+      <div class="btn-row" style="justify-content:center">
+        <button class="btn secondary" id="btnScoreWissen" style="color:#c0392b;border-color:#c0392b">Verwijder deze score</button>
+      </div>
+    ` : ''}
   `;
+  if(bestaande){
+    document.getElementById('btnScoreWissen').addEventListener('click', () => {
+      showConfirm('Deze score wissen? De datum komt dan terug als "nog te spelen" te staan.', async () => {
+        try{
+          await deleteDoc(doc(db, 'tennisMatches', wk.datum));
+          showToast('Score verwijderd.');
+        }catch(e){
+          console.error(e);
+          showToast('Kon niet verwijderen — controleer je internetverbinding.');
+        }
+      });
+    });
+  }
   renderSpelerSlots();
   renderTeamChips();
   vulSetInputs(bestaande ? bestaande.sets : [{a:'',b:''}]);
