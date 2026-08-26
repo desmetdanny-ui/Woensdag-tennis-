@@ -275,6 +275,8 @@ const spelersDocRef = doc(db, 'tennisMeta', 'spelers');
 const SPELERS = ["Lode", "Kristel", "Paul", "Jos", "Danny", "Luc"];
 
 const ROTATIE = [
+  {datum:"2026-08-19",rust:[],team1:["Luc","Danny"],team2:["Kristel","Lode"]},
+  {datum:"2026-08-26",rust:[],team1:["Jos","Kristel"],team2:["Danny","Lode"]},
   {datum:"2026-09-02",rust:["Kristel","Luc"],team1:["Lode","Paul"],team2:["Jos","Danny"]},
   {datum:"2026-09-09",rust:["Lode","Jos"],team1:["Kristel","Luc"],team2:["Paul","Danny"]},
   {datum:"2026-09-16",rust:["Paul","Danny"],team1:["Lode","Kristel"],team2:["Jos","Luc"]},
@@ -312,6 +314,7 @@ const ROTATIE = [
   {datum:"2027-04-28",rust:["Lode","Paul"],team1:["Kristel","Danny"],team2:["Jos","Luc"]}
 ];
 const KERST_DATUMS = ["2026-12-23","2026-12-30"];
+const GEANNULEERD_DATUMS = ["2026-09-02"];
 
 /* ============ MODAL / TOAST ============ */
 function showConfirm(message, onYes){
@@ -387,16 +390,26 @@ function renderKalender(){
   const container = document.getElementById('kalenderLijst');
   container.innerHTML = '';
   ROTATIE.forEach(wk => {
+    const geannuleerd = GEANNULEERD_DATUMS.includes(wk.datum);
     const gespeeld = matchVoorDatum(wk.datum);
     const teamA = gespeeld ? gespeeld.team1 : wk.team1;
     const teamB = gespeeld ? gespeeld.team2 : wk.team2;
     const div = document.createElement('div');
     div.className = 'week-item' + (gespeeld ? ' gespeeld' : '');
+    if(geannuleerd) div.style.opacity = '0.55';
     const kerstNote = KERST_DATUMS.includes(wk.datum) ? ' <span style="color:#c0392b">(kerstvakantie — check zelf of dit doorgaat)</span>' : '';
+    let statusTekst;
+    if(geannuleerd){
+      statusTekst = 'niet doorgegaan';
+    } else if(gespeeld){
+      statusTekst = gespeeld.winnaar === 0 ? '✓ gelijkspel' : '✓ gespeeld';
+    } else {
+      statusTekst = 'nog te spelen';
+    }
     div.innerHTML = `
       <div class="wk-top">
         <span class="wk-datum">${maandLabelKort(wk.datum)}${kerstNote}</span>
-        <span class="wk-status ${gespeeld?'done':''}">${gespeeld ? (gespeeld.winnaar===0 ? '✓ gelijkspel' : '✓ gespeeld') : 'nog te spelen'}</span>
+        <span class="wk-status ${gespeeld && !geannuleerd?'done':''}">${statusTekst}</span>
       </div>
       <div class="team-row">
         <div class="avatars">${avatarHTML(teamA[0],30)}${avatarHTML(teamA[1],30)}</div>
@@ -407,8 +420,8 @@ function renderKalender(){
         <div class="avatars">${avatarHTML(teamB[0],30)}${avatarHTML(teamB[1],30)}</div>
         <span class="namen">${teamB.join(' & ')}</span>
       </div>
-      <div class="rust-lbl">Rust: ${wk.rust.join(' & ')}</div>
-      ${!gespeeld ? '<div class="voorstel-note">Ploegindeling hierboven is een voorstel — wordt \'s avonds zelf bepaald bij het ingeven van de score.</div>' : ''}
+      ${wk.rust.length ? `<div class="rust-lbl">Rust: ${wk.rust.join(' & ')}</div>` : ''}
+      ${!gespeeld && !geannuleerd ? '<div class="voorstel-note">Ploegindeling hierboven is een voorstel — wordt \'s avonds zelf bepaald bij het ingeven van de score.</div>' : ''}
     `;
     container.appendChild(div);
   });
@@ -416,7 +429,7 @@ function renderKalender(){
 
 function renderVolgendeWedstrijdBanner(){
   const banner = document.getElementById('volgendeWedstrijdBanner');
-  const volgende = ROTATIE.find(wk => !matchVoorDatum(wk.datum));
+  const volgende = ROTATIE.find(wk => !matchVoorDatum(wk.datum) && !GEANNULEERD_DATUMS.includes(wk.datum));
   if(!volgende){
     banner.innerHTML = '';
     return;
@@ -428,7 +441,7 @@ function renderVolgendeWedstrijdBanner(){
       <div class="team-row"><div class="avatars">${avatarHTML(volgende.team1[0],26)}${avatarHTML(volgende.team1[1],26)}</div><span class="namen">${volgende.team1.join(' & ')}</span></div>
       <div class="vs">vs</div>
       <div class="team-row"><div class="avatars">${avatarHTML(volgende.team2[0],26)}${avatarHTML(volgende.team2[1],26)}</div><span class="namen">${volgende.team2.join(' & ')}</span></div>
-      <div class="rust-lbl">Rust: ${volgende.rust.join(' & ')}</div>
+      ${volgende.rust.length ? `<div class="rust-lbl">Rust: ${volgende.rust.join(' & ')}</div>` : ''}
     </div>
   `;
 }
@@ -439,12 +452,12 @@ let datumDropdownGeinitialiseerd = false;
 function vulDatumDropdown(){
   const huidigeSelectie = datumSelect.value;
   datumSelect.innerHTML = ROTATIE.map(wk => {
-    const gespeeld = matchVoorDatum(wk.datum) ? ' ✓' : '';
+    const gespeeld = matchVoorDatum(wk.datum) ? ' ✓' : (GEANNULEERD_DATUMS.includes(wk.datum) ? ' (niet doorgegaan)' : '');
     return `<option value="${wk.datum}">${maandLabelKort(wk.datum)}${gespeeld}</option>`;
   }).join('');
 
   if(!datumDropdownGeinitialiseerd){
-    const eersteOnbespeelde = ROTATIE.find(wk => !matchVoorDatum(wk.datum));
+    const eersteOnbespeelde = ROTATIE.find(wk => !matchVoorDatum(wk.datum) && !GEANNULEERD_DATUMS.includes(wk.datum));
     if(eersteOnbespeelde) datumSelect.value = eersteOnbespeelde.datum;
     datumDropdownGeinitialiseerd = true;
     toonMatchInfo();
@@ -468,7 +481,7 @@ function toonMatchInfo(){
   huidigeTeamA = bestaande ? bestaande.team1.slice() : wk.team1.slice();
 
   document.getElementById('matchInfo').innerHTML = `
-    <div class="rust-lbl" style="margin-bottom:10px">Rust volgens schema: <b>${wk.rust.join(' & ')}</b></div>
+    ${wk.rust.length ? `<div class="rust-lbl" style="margin-bottom:10px">Rust volgens schema: <b>${wk.rust.join(' & ')}</b></div>` : ''}
     <div class="team-kies-lbl">Wie speelt vanavond? (kan er iemand niet, vervang die door een gastspeler)</div>
     <div class="chip-grid" id="spelerSlots"></div>
     <div class="team-kies-lbl">Wie speelt met wie? (tik een naam om te wisselen van team — voorstel, vrij aan te passen)</div>
@@ -855,6 +868,7 @@ function icsEscape(str){ return str.replace(/,/g,'\\,').replace(/;/g,'\\;'); }
 function bouwSeizoenICS(){
   const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Tennis Heiveld//NL','CALSCALE:GREGORIAN'];
   ROTATIE.forEach(wk => {
+    if(GEANNULEERD_DATUMS.includes(wk.datum)) return;
     const ymd = wk.datum.replace(/-/g,'');
     lines.push('BEGIN:VEVENT');
     lines.push('UID:' + ymd + '-tennisheiveld@heiveld');
@@ -862,7 +876,7 @@ function bouwSeizoenICS(){
     lines.push('DTEND;TZID=Europe/Brussels:' + ymd + 'T200000');
     lines.push('SUMMARY:' + icsEscape('Tennis Heiveld'));
     lines.push('LOCATION:' + icsEscape('Heiveld'));
-    lines.push('DESCRIPTION:' + icsEscape('Rust volgens schema: ' + wk.rust.join(' & ') + '. Ploegindeling wordt \'s avonds zelf bepaald.'));
+    lines.push('DESCRIPTION:' + icsEscape((wk.rust.length ? 'Rust volgens schema: ' + wk.rust.join(' & ') + '. ' : '') + 'Ploegindeling wordt \'s avonds zelf bepaald.'));
     lines.push('END:VEVENT');
   });
   lines.push('END:VCALENDAR');
@@ -878,7 +892,7 @@ function downloadICS(bestandsnaam, inhoud){
 }
 document.getElementById('btnHeleSeizoenAgenda').addEventListener('click', () => {
   downloadICS('tennis-heiveld-seizoen.ics', bouwSeizoenICS());
-  showToast('Agendabestand gedownload — open het om alle 35 data toe te voegen.');
+  showToast('Agendabestand gedownload.');
 });
 
 /* ============ TABS ============ */
