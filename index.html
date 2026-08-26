@@ -502,7 +502,7 @@ function toonMatchInfo(){
           showToast('Score verwijderd.');
         }catch(e){
           console.error(e);
-          showToast('Kon niet verwijderen — controleer je internetverbinding.');
+          showToast('Kon niet verwijderen — ' + (e && e.message ? e.message : 'onbekende fout') + ' (' + (e && e.code ? e.code : '?') + ')');
         }
       });
     });
@@ -674,7 +674,7 @@ document.getElementById('btnScoreOpslaan').addEventListener('click', async () =>
     showDeelPrompt(deelTekst);
   }catch(e){
     console.error(e);
-    showToast('Kon niet opslaan — controleer je internetverbinding.');
+    showToast('Kon niet opslaan — ' + (e && e.message ? e.message : 'onbekende fout') + ' (' + (e && e.code ? e.code : '?') + ')');
   }
 });
 
@@ -856,7 +856,7 @@ document.getElementById('fotoInput').addEventListener('change', (e) => {
       showToast('Foto van ' + actieveSpelerFoto + ' opgeslagen.');
     }catch(err){
       console.error(err);
-      showToast('Kon foto niet opslaan — controleer je internetverbinding.');
+      showToast('Kon foto niet opslaan — ' + (err && err.message ? err.message : 'onbekende fout') + ' (' + (err && err.code ? err.code : '?') + ')');
     }
     e.target.value = '';
   };
