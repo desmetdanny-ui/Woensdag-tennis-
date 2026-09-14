@@ -240,6 +240,12 @@
   <!-- SPELERS -->
   <div id="tab-spelers" class="hidden">
     <div class="card">
+      <h2>Nieuwe speler toevoegen</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:-6px">Voeg een speler toe aan de basis — die verschijnt dan overal: bij de foto's, in het klassement en als keuze bij het invullen van een score.</p>
+      <input type="text" id="nieuweSpelerInput" placeholder="Naam (bv. Greet of Danny VDV)">
+      <div class="btn-row"><button class="btn full" id="btnSpelerToevoegen">Speler toevoegen</button></div>
+    </div>
+    <div class="card">
       <h2>Foto's</h2>
       <p style="font-size:12px;color:var(--muted);margin-top:-6px">Tik op een naam om een foto te kiezen of te wijzigen.</p>
       <div id="spelersLijst"></div>
@@ -271,50 +277,63 @@ const db = getFirestore(fbApp);
 
 const matchesCollRef = collection(db, 'tennisMatches');
 const spelersDocRef = doc(db, 'tennisMeta', 'spelers');
+const spelerslijstDocRef = doc(db, 'tennisMeta', 'spelerslijst');
 
-const SPELERS = ["Lode", "Kristel", "Paul", "Jos", "Danny", "Luc"];
+// Basisspelers zonder Kristel (die geeft nu les en speelt niet meer vast mee).
+// Deze lijst wordt bij de eerste keer laden naar Firebase weggeschreven en is
+// vanaf dan volledig aanpasbaar via de "Nieuwe speler toevoegen"-knop.
+let spelersDynamisch = ["Lode", "Paul", "Jos", "Danny", "Luc"];
 
-const ROTATIE = [
+/* ============ ROTATIE: historisch (ongewijzigd) + automatisch vervolg ============ */
+const ROTATIE_HISTORISCH = [
   {datum:"2026-08-19",rust:[],team1:["Luc","Danny"],team2:["Kristel","Lode"]},
   {datum:"2026-08-26",rust:[],team1:["Jos","Kristel"],team2:["Danny","Lode"]},
   {datum:"2026-09-02",rust:["Kristel","Luc"],team1:["Lode","Paul"],team2:["Jos","Danny"]},
-  {datum:"2026-09-09",rust:["Lode","Jos"],team1:["Kristel","Luc"],team2:["Paul","Danny"]},
-  {datum:"2026-09-16",rust:["Paul","Danny"],team1:["Lode","Kristel"],team2:["Jos","Luc"]},
-  {datum:"2026-09-23",rust:["Jos","Danny"],team1:["Lode","Luc"],team2:["Kristel","Paul"]},
-  {datum:"2026-09-30",rust:["Kristel","Paul"],team1:["Lode","Jos"],team2:["Danny","Luc"]},
-  {datum:"2026-10-07",rust:["Lode","Luc"],team1:["Kristel","Danny"],team2:["Paul","Jos"]},
-  {datum:"2026-10-14",rust:["Paul","Jos"],team1:["Lode","Danny"],team2:["Kristel","Luc"]},
-  {datum:"2026-10-21",rust:["Danny","Luc"],team1:["Lode","Paul"],team2:["Kristel","Jos"]},
-  {datum:"2026-10-28",rust:["Lode","Kristel"],team1:["Paul","Luc"],team2:["Jos","Danny"]},
-  {datum:"2026-11-04",rust:["Paul","Luc"],team1:["Lode","Jos"],team2:["Kristel","Danny"]},
-  {datum:"2026-11-11",rust:["Kristel","Jos"],team1:["Lode","Luc"],team2:["Paul","Danny"]},
-  {datum:"2026-11-18",rust:["Lode","Danny"],team1:["Kristel","Jos"],team2:["Paul","Luc"]},
-  {datum:"2026-11-25",rust:["Jos","Luc"],team1:["Lode","Danny"],team2:["Kristel","Paul"]},
-  {datum:"2026-12-02",rust:["Lode","Paul"],team1:["Kristel","Jos"],team2:["Danny","Luc"]},
-  {datum:"2026-12-09",rust:["Kristel","Danny"],team1:["Lode","Paul"],team2:["Jos","Luc"]},
-  {datum:"2026-12-16",rust:["Lode","Luc"],team1:["Kristel","Danny"],team2:["Paul","Jos"]},
-  {datum:"2026-12-23",rust:["Jos","Danny"],team1:["Lode","Kristel"],team2:["Paul","Luc"]},
-  {datum:"2026-12-30",rust:["Kristel","Paul"],team1:["Lode","Luc"],team2:["Jos","Danny"]},
-  {datum:"2027-01-06",rust:["Paul","Danny"],team1:["Lode","Kristel"],team2:["Jos","Luc"]},
-  {datum:"2027-01-13",rust:["Lode","Kristel"],team1:["Paul","Jos"],team2:["Danny","Luc"]},
-  {datum:"2027-01-20",rust:["Jos","Luc"],team1:["Lode","Danny"],team2:["Kristel","Paul"]},
-  {datum:"2027-01-27",rust:["Lode","Danny"],team1:["Kristel","Luc"],team2:["Paul","Jos"]},
-  {datum:"2027-02-03",rust:["Paul","Luc"],team1:["Lode","Jos"],team2:["Kristel","Danny"]},
-  {datum:"2027-02-10",rust:["Kristel","Jos"],team1:["Lode","Luc"],team2:["Paul","Danny"]},
-  {datum:"2027-02-17",rust:["Paul","Jos"],team1:["Lode","Kristel"],team2:["Danny","Luc"]},
-  {datum:"2027-02-24",rust:["Danny","Luc"],team1:["Lode","Paul"],team2:["Kristel","Jos"]},
-  {datum:"2027-03-03",rust:["Kristel","Luc"],team1:["Lode","Jos"],team2:["Paul","Danny"]},
-  {datum:"2027-03-10",rust:["Lode","Paul"],team1:["Kristel","Luc"],team2:["Jos","Danny"]},
-  {datum:"2027-03-17",rust:["Kristel","Danny"],team1:["Lode","Paul"],team2:["Jos","Luc"]},
-  {datum:"2027-03-24",rust:["Lode","Jos"],team1:["Kristel","Paul"],team2:["Danny","Luc"]},
-  {datum:"2027-03-31",rust:["Paul","Luc"],team1:["Lode","Danny"],team2:["Kristel","Jos"]},
-  {datum:"2027-04-07",rust:["Jos","Danny"],team1:["Lode","Kristel"],team2:["Paul","Luc"]},
-  {datum:"2027-04-14",rust:["Lode","Kristel"],team1:["Paul","Luc"],team2:["Jos","Danny"]},
-  {datum:"2027-04-21",rust:["Kristel","Luc"],team1:["Lode","Jos"],team2:["Paul","Danny"]},
-  {datum:"2027-04-28",rust:["Lode","Paul"],team1:["Kristel","Danny"],team2:["Jos","Luc"]}
+  {datum:"2026-09-09",rust:["Lode","Jos"],team1:["Kristel","Luc"],team2:["Paul","Danny"]}
 ];
 const KERST_DATUMS = ["2026-12-23","2026-12-30"];
 const GEANNULEERD_DATUMS = ["2026-09-02"];
+
+function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+function naarISO(d){ return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+
+const VERVOLG_DATUMS = (() => {
+  const lijst = [];
+  const start = new Date(2026, 8, 16); // 16 september 2026
+  const eind = new Date(2027, 3, 28);  // 28 april 2027
+  let d = new Date(start);
+  while(d <= eind){
+    lijst.push(naarISO(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return lijst;
+})();
+
+function genereerVervolgRotatie(basisSpelers){
+  return VERVOLG_DATUMS.map((datum, i) => {
+    // Vaste, met de hand afgesproken indeling voor 16/9: Kristel en Luc worden
+    // die avond vervangen door twee nieuwe spelers.
+    if(datum === "2026-09-16"){
+      return {datum, rust:["Danny","Paul","Luc"], team1:["Lode","Danny VDV"], team2:["Jos","Greet"]};
+    }
+    const n = basisSpelers.length;
+    if(n < 4){
+      return {datum, rust: basisSpelers.slice(), team1: [], team2: []};
+    }
+    const rustAantal = Math.max(0, n - 4);
+    const rustNamen = [];
+    for(let r = 0; r < rustAantal; r++){
+      rustNamen.push(basisSpelers[(i + r) % n]);
+    }
+    const spelend = basisSpelers.filter(s => !rustNamen.includes(s));
+    return {datum, rust: rustNamen, team1: [spelend[0], spelend[1]], team2: [spelend[2], spelend[3]]};
+  });
+}
+
+let ROTATIE = [];
+function herbouwRotatie(){
+  ROTATIE = ROTATIE_HISTORISCH.concat(genereerVervolgRotatie(spelersDynamisch));
+}
 
 /* ============ MODAL / TOAST ============ */
 function showConfirm(message, onYes){
@@ -352,6 +371,16 @@ onSnapshot(spelersDocRef, (snap) => {
   spelersFotos = snap.exists() ? snap.data() : {};
   renderAll();
 }, (err) => console.error('spelers sync error', err));
+
+onSnapshot(spelerslijstDocRef, (snap) => {
+  if(snap.exists() && Array.isArray(snap.data().namen) && snap.data().namen.length){
+    spelersDynamisch = snap.data().namen;
+  } else {
+    // eerste keer laden: default lijst (zonder Kristel) wegschrijven naar Firebase
+    setDoc(spelerslijstDocRef, { namen: spelersDynamisch }).catch(e => console.error(e));
+  }
+  renderAll();
+}, (err) => console.error('spelerslijst sync error', err));
 
 onSnapshot(query(matchesCollRef, orderBy('datum', 'asc')), (snap) => {
   matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -517,12 +546,12 @@ function renderSpelerSlots(){
   const container = document.getElementById('spelerSlots');
   container.innerHTML = '';
   huidigeSpelersVanavond.forEach((naam, idx) => {
-    const isGast = !SPELERS.includes(naam);
+    const isGast = !spelersDynamisch.includes(naam);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
     const sel = document.createElement('select');
     sel.style.fontSize = '13px';
-    const opties = [...SPELERS, 'Gastspeler...'];
+    const opties = [...spelersDynamisch, 'Gastspeler...'];
     opties.forEach(o => {
       const opt = document.createElement('option');
       opt.value = o;
@@ -556,7 +585,7 @@ function renderSpelerSlots(){
   });
 }
 function vervangSpeler(idx, oudeNaam, nieuweNaam){
-  const isRegulierEnAlIngezet = SPELERS.includes(nieuweNaam) &&
+  const isRegulierEnAlIngezet = spelersDynamisch.includes(nieuweNaam) &&
     huidigeSpelersVanavond.some((n, i) => i !== idx && n === nieuweNaam);
   if(isRegulierEnAlIngezet){
     showToast(nieuweNaam + ' staat al bij een ander vakje ingevuld — kies een andere speler.');
@@ -681,13 +710,13 @@ document.getElementById('btnScoreOpslaan').addEventListener('click', async () =>
 /* ============ KLASSEMENT ============ */
 function renderKlassement(){
   const spelerStats = {};
-  SPELERS.forEach(s => spelerStats[s] = {gespeeld:0, gewonnen:0});
+  spelersDynamisch.forEach(s => spelerStats[s] = {gespeeld:0, gewonnen:0});
   const ploegStats = {}; // key = sorted names joined
 
   matches.forEach(m => {
     const winTeam = m.winnaar === 1 ? m.team1 : (m.winnaar === 2 ? m.team2 : null); // null = gelijkspel
     [...m.team1, ...m.team2].forEach(naam => {
-      if(!spelerStats[naam]) spelerStats[naam] = {gespeeld:0, gewonnen:0, gast:!SPELERS.includes(naam)};
+      if(!spelerStats[naam]) spelerStats[naam] = {gespeeld:0, gewonnen:0, gast:!spelersDynamisch.includes(naam)};
       spelerStats[naam].gespeeld++;
     });
     if(winTeam) winTeam.forEach(naam => { spelerStats[naam].gewonnen++; });
@@ -825,7 +854,7 @@ let actieveSpelerFoto = null;
 function renderSpelers(){
   const container = document.getElementById('spelersLijst');
   container.innerHTML = '';
-  SPELERS.forEach(naam => {
+  spelersDynamisch.forEach(naam => {
     const div = document.createElement('div');
     div.className = 'speler-rij';
     div.innerHTML = `${avatarHTML(naam,48)}<span class="naam">${naam}</span><span class="btn secondary" style="padding:6px 14px;font-size:12px">Foto kiezen</span>`;
@@ -861,6 +890,31 @@ document.getElementById('fotoInput').addEventListener('change', (e) => {
     e.target.value = '';
   };
   reader.readAsDataURL(file);
+});
+
+/* ============ NIEUWE SPELER TOEVOEGEN ============ */
+async function voegSpelerToe(naam){
+  naam = naam.trim();
+  if(!naam){ return; }
+  if(spelersDynamisch.some(n => n.toLowerCase() === naam.toLowerCase())){
+    showToast(naam + ' staat al in de lijst.');
+    return;
+  }
+  const nieuweLijst = [...spelersDynamisch, naam];
+  try{
+    await setDoc(spelerslijstDocRef, { namen: nieuweLijst });
+    showToast(naam + ' toegevoegd aan de spelerslijst.');
+    document.getElementById('nieuweSpelerInput').value = '';
+  }catch(e){
+    console.error(e);
+    showToast('Kon speler niet toevoegen — ' + (e && e.message ? e.message : 'onbekende fout') + ' (' + (e && e.code ? e.code : '?') + ')');
+  }
+}
+document.getElementById('btnSpelerToevoegen').addEventListener('click', () => {
+  voegSpelerToe(document.getElementById('nieuweSpelerInput').value);
+});
+document.getElementById('nieuweSpelerInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ voegSpelerToe(e.target.value); }
 });
 
 /* ============ AGENDA-EXPORT (heel seizoen) ============ */
@@ -909,6 +963,7 @@ document.querySelectorAll('.tab-btn').forEach(b => {
 
 /* ============ INIT ============ */
 function renderAll(){
+  herbouwRotatie();
   renderKalender();
   vulDatumDropdown();
   renderKlassement();
