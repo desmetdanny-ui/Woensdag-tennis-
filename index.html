@@ -282,7 +282,12 @@ const spelerslijstDocRef = doc(db, 'tennisMeta', 'spelerslijst');
 // Basisspelers zonder Kristel (die geeft nu les en speelt niet meer vast mee).
 // Deze lijst wordt bij de eerste keer laden naar Firebase weggeschreven en is
 // vanaf dan volledig aanpasbaar via de "Nieuwe speler toevoegen"-knop.
-let spelersDynamisch = ["Lode", "Paul", "Jos", "Danny", "Luc"];
+// Danny VDV en Greet staan er al meteen bij (voor 16/9), maar tellen niet mee
+// voor de wekelijkse rotatie — die blijft draaien op de 5 vaste basisspelers.
+let spelersDynamisch = ["Lode", "Paul", "Jos", "Danny", "Luc", "Danny VDV", "Greet"];
+
+// De 5 vaste basisspelers waarop de wekelijkse rotatie is gebaseerd.
+const BASIS_SPELERS = ["Lode", "Paul", "Jos", "Danny", "Luc"];
 
 /* ============ ROTATIE: historisch (ongewijzigd) + automatisch vervolg ============ */
 const ROTATIE_HISTORISCH = [
@@ -332,7 +337,7 @@ function genereerVervolgRotatie(basisSpelers){
 
 let ROTATIE = [];
 function herbouwRotatie(){
-  ROTATIE = ROTATIE_HISTORISCH.concat(genereerVervolgRotatie(spelersDynamisch));
+  ROTATIE = ROTATIE_HISTORISCH.concat(genereerVervolgRotatie(BASIS_SPELERS));
 }
 
 /* ============ MODAL / TOAST ============ */
