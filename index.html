@@ -97,6 +97,7 @@
   .standing-row .naam{font-weight:bold;font-size:14px;}
   .standing-row .stats{font-size:12px;color:var(--muted);white-space:nowrap;}
   .standing-row .stats b{color:var(--ink);}
+  .drempel-note{font-size:11px;color:var(--muted);margin:12px 0 6px;text-align:center;}
 
   .set-input-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .set-input-row label{margin:0;min-width:52px;font-size:13px;}
@@ -224,11 +225,12 @@
   <div id="tab-klassement" class="hidden">
     <div class="card">
       <h2>🏆 Beste speler (individueel)</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:-6px">Gesorteerd op aantal overwinningen. Pas opgenomen in de hoofdranking vanaf 3 gespeelde wedstrijden.</p>
       <div id="klassementSpelers"><div class="empty-msg">Nog geen wedstrijden gespeeld.</div></div>
     </div>
     <div class="card">
       <h2>🏆 Beste ploeg</h2>
-      <p style="font-size:12px;color:var(--muted);margin-top:-6px">Combinaties die minstens 1x samen speelden.</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:-6px">Combinaties die minstens 1x samen speelden, gesorteerd op aantal overwinningen. Pas opgenomen in de hoofdranking vanaf 3 gespeelde wedstrijden.</p>
       <div id="klassementPloegen"><div class="empty-msg">Nog geen wedstrijden gespeeld.</div></div>
     </div>
     <div class="card">
@@ -288,6 +290,12 @@ let spelersDynamisch = ["Lode", "Paul", "Jos", "Danny", "Luc", "Danny VDV", "Gre
 
 // De 5 vaste basisspelers waarop de wekelijkse rotatie is gebaseerd.
 const BASIS_SPELERS = ["Lode", "Paul", "Jos", "Danny", "Luc"];
+
+// Minimum aantal gespeelde wedstrijden om in de hoofdranking (klassement) te
+// verschijnen. Spelers/ploegen die hier nog onder zitten staan apart, los
+// van de hoofdranking, zodat iemand niet na 1 overwinning op 100% bovenaan
+// blijft staan.
+const MIN_WEDSTRIJDEN_KLASSEMENT = 3;
 
 /* ============ ROTATIE: historisch (ongewijzigd) + automatisch vervolg ============ */
 const ROTATIE_HISTORISCH = [
@@ -713,6 +721,23 @@ document.getElementById('btnScoreOpslaan').addEventListener('click', async () =>
 });
 
 /* ============ KLASSEMENT ============ */
+function sorteerOpOverwinningen(a, b){
+  return b.gewonnen - a.gewonnen || b.pct - a.pct;
+}
+
+function renderStandingRows(container, lijst){
+  container.innerHTML = '';
+  lijst.forEach((s, idx) => {
+    const div = document.createElement('div');
+    div.className = 'standing-row' + (idx===0 ? ' lead' : '');
+    div.innerHTML = `
+      <div class="naam-wrap">${s.avatarsHtml || avatarHTML(s.naam,34)}<span class="rank">#${idx+1}</span><span class="naam">${s.label}</span></div>
+      <div class="stats"><b>${s.gewonnen}</b>/${s.gespeeld} gewonnen (${Math.round(s.pct*100)}%)</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
 function renderKlassement(){
   const spelerStats = {};
   spelersDynamisch.forEach(s => spelerStats[s] = {gespeeld:0, gewonnen:0});
@@ -737,52 +762,78 @@ function renderKlassement(){
     }
   });
 
-  const spelerLijst = Object.keys(spelerStats).map(naam => ({
+  const spelerLijstVolledig = Object.keys(spelerStats).map(naam => ({
     naam, ...spelerStats[naam],
-    pct: spelerStats[naam].gespeeld ? spelerStats[naam].gewonnen / spelerStats[naam].gespeeld : 0
-  })).filter(s => s.gespeeld > 0).sort((a,b) => b.pct - a.pct || b.gewonnen - a.gewonnen);
+    pct: spelerStats[naam].gespeeld ? spelerStats[naam].gewonnen / spelerStats[naam].gespeeld : 0,
+    label: naam + (spelerStats[naam].gast ? ' <span style="font-size:10px;color:var(--muted);font-weight:normal">(gast)</span>' : ''),
+    avatarsHtml: avatarHTML(naam,34)
+  })).filter(s => s.gespeeld > 0);
+
+  const spelerHoofd = spelerLijstVolledig.filter(s => s.gespeeld >= MIN_WEDSTRIJDEN_KLASSEMENT).sort(sorteerOpOverwinningen);
+  const spelerOnder = spelerLijstVolledig.filter(s => s.gespeeld < MIN_WEDSTRIJDEN_KLASSEMENT).sort(sorteerOpOverwinningen);
 
   const container1 = document.getElementById('klassementSpelers');
-  if(spelerLijst.length === 0){
+  if(spelerLijstVolledig.length === 0){
     container1.innerHTML = '<div class="empty-msg">Nog geen wedstrijden gespeeld.</div>';
   } else {
     container1.innerHTML = '';
-    spelerLijst.forEach((s, idx) => {
-      const div = document.createElement('div');
-      div.className = 'standing-row' + (idx===0 ? ' lead' : '');
-      div.innerHTML = `
-        <div class="naam-wrap">${avatarHTML(s.naam,34)}<span class="rank">#${idx+1}</span><span class="naam">${s.naam}${s.gast ? ' <span style="font-size:10px;color:var(--muted);font-weight:normal">(gast)</span>' : ''}</span></div>
-        <div class="stats"><b>${s.gewonnen}</b>/${s.gespeeld} gewonnen (${Math.round(s.pct*100)}%)</div>
-      `;
-      container1.appendChild(div);
-    });
+    if(spelerHoofd.length === 0){
+      container1.innerHTML = `<div class="empty-msg">Nog niemand heeft ${MIN_WEDSTRIJDEN_KLASSEMENT} wedstrijden gespeeld.</div>`;
+    } else {
+      renderStandingRows(container1, spelerHoofd);
+    }
+    if(spelerOnder.length > 0){
+      const noteDiv = document.createElement('div');
+      noteDiv.className = 'drempel-note';
+      noteDiv.textContent = `Nog geen ${MIN_WEDSTRIJDEN_KLASSEMENT} wedstrijden gespeeld:`;
+      container1.appendChild(noteDiv);
+      const onderDiv = document.createElement('div');
+      renderStandingRows(onderDiv, spelerOnder.map(s => ({...s, naam: s.naam})));
+      // geen ranknummers voor deze groep, enkel naam + stats
+      Array.from(onderDiv.children).forEach(el => {
+        const rankEl = el.querySelector('.rank');
+        if(rankEl) rankEl.remove();
+      });
+      container1.appendChild(onderDiv);
+    }
   }
 
-  const ploegLijst = Object.values(ploegStats).map(p => ({
-    ...p, pct: p.gespeeld ? p.gewonnen/p.gespeeld : 0
-  })).sort((a,b) => b.pct - a.pct || b.gewonnen - a.gewonnen);
+  const ploegLijstVolledig = Object.values(ploegStats).map(p => ({
+    ...p, pct: p.gespeeld ? p.gewonnen/p.gespeeld : 0,
+    label: p.namen.join(' & '),
+    avatarsHtml: `<div class="avatars" style="display:flex">${avatarHTML(p.namen[0],30)}${avatarHTML(p.namen[1],30)}</div>`
+  }));
+
+  const ploegHoofd = ploegLijstVolledig.filter(p => p.gespeeld >= MIN_WEDSTRIJDEN_KLASSEMENT).sort(sorteerOpOverwinningen);
+  const ploegOnder = ploegLijstVolledig.filter(p => p.gespeeld < MIN_WEDSTRIJDEN_KLASSEMENT).sort(sorteerOpOverwinningen);
 
   const container2 = document.getElementById('klassementPloegen');
-  if(ploegLijst.length === 0){
+  if(ploegLijstVolledig.length === 0){
     container2.innerHTML = '<div class="empty-msg">Nog geen wedstrijden gespeeld.</div>';
   } else {
     container2.innerHTML = '';
-    ploegLijst.forEach((p, idx) => {
-      const div = document.createElement('div');
-      div.className = 'standing-row' + (idx===0 ? ' lead' : '');
-      div.innerHTML = `
-        <div class="naam-wrap">
-          <div class="avatars" style="display:flex">${avatarHTML(p.namen[0],30)}${avatarHTML(p.namen[1],30)}</div>
-          <span class="rank">#${idx+1}</span><span class="naam">${p.namen.join(' & ')}</span>
-        </div>
-        <div class="stats"><b>${p.gewonnen}</b>/${p.gespeeld} gewonnen (${Math.round(p.pct*100)}%)</div>
-      `;
-      container2.appendChild(div);
-    });
+    if(ploegHoofd.length === 0){
+      container2.innerHTML = `<div class="empty-msg">Nog geen enkele ploeg heeft ${MIN_WEDSTRIJDEN_KLASSEMENT} wedstrijden samen gespeeld.</div>`;
+    } else {
+      renderStandingRows(container2, ploegHoofd);
+    }
+    if(ploegOnder.length > 0){
+      const noteDiv = document.createElement('div');
+      noteDiv.className = 'drempel-note';
+      noteDiv.textContent = `Nog geen ${MIN_WEDSTRIJDEN_KLASSEMENT} wedstrijden samen gespeeld:`;
+      container2.appendChild(noteDiv);
+      const onderDiv = document.createElement('div');
+      renderStandingRows(onderDiv, ploegOnder);
+      Array.from(onderDiv.children).forEach(el => {
+        const rankEl = el.querySelector('.rank');
+        if(rankEl) rankEl.remove();
+      });
+      container2.appendChild(onderDiv);
+    }
   }
 
   renderSeizoenWeetjes();
-  detecteerLeiderswissel(spelerLijst[0] ? spelerLijst[0].naam : null);
+  detecteerLeiderswissel(spelerHoofd[0] ? spelerHoofd[0].naam : null);
 }
 
 /* ============ WEETJES VAN HET SEIZOEN ============ */
